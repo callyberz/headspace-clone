@@ -1,0 +1,43 @@
+{
+  "name": "hs-meditate",
+  "version": "0.1.0",
+  "description": "A minimal CLI meditation tool for developers",
+  "type": "module",
+  "bin": {
+    "hs": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "meditation",
+    "cli",
+    "mindfulness",
+    "breathing",
+    "developer-tools"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "chalk": "^5.6.2",
+    "cli-boxes": "^4.0.1",
+    "commander": "^14.0.3",
+    "conf": "^15.1.0",
+    "figures": "^6.1.0",
+    "ink": "^6.6.0",
+    "react": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.2.2",
+    "@types/react": "^19.2.13",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
