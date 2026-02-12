@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text } from "ink";
+import { Box, Text } from "ink";
 
 const INHALE_MS = 4000;
 const HOLD_MS = 4000;
@@ -24,20 +24,22 @@ function getPhase(elapsed: number): { phase: Phase; progress: number } {
 }
 
 const phaseLabels: Record<Phase, string> = {
-  inhale: "Breathe in...",
-  hold: "Hold...",
-  exhale: "Breathe out...",
+  inhale: "Breathe in",
+  hold: "Hold",
+  exhale: "Breathe out",
 };
 
-function dots(phase: Phase, progress: number): string {
+const BAR_WIDTH = 20;
+const FILL = "━";
+const EMPTY = "─";
+
+function breathBar(phase: Phase, progress: number): { filled: number; color: string } {
   if (phase === "inhale") {
-    const count = 1 + Math.floor(progress * 3);
-    return "●".repeat(count);
+    return { filled: Math.round(progress * BAR_WIDTH), color: "cyan" };
   } else if (phase === "hold") {
-    return "●●●●";
+    return { filled: BAR_WIDTH, color: "blue" };
   } else {
-    const count = 4 - Math.floor(progress * 3);
-    return "●".repeat(Math.max(count, 1));
+    return { filled: Math.round((1 - progress) * BAR_WIDTH), color: "cyan" };
   }
 }
 
@@ -53,12 +55,16 @@ export default function BreathingIndicator() {
 
   const { phase, progress } = getPhase(elapsed);
   const label = phaseLabels[phase];
-  const visual = dots(phase, progress);
+  const { filled, color } = breathBar(phase, progress);
+  const empty = BAR_WIDTH - filled;
 
   return (
-    <Text>
-      <Text dimColor>{label.padEnd(20)}</Text>
-      <Text color="cyan">{visual}</Text>
-    </Text>
+    <Box flexDirection="column">
+      <Text dimColor>{label}</Text>
+      <Text>
+        <Text color={color}>{FILL.repeat(filled)}</Text>
+        <Text dimColor>{EMPTY.repeat(empty)}</Text>
+      </Text>
+    </Box>
   );
 }

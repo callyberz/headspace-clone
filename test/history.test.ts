@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 
 // Mock getDb to use an in-memory database
@@ -9,8 +9,17 @@ vi.mock("../src/store/db.js", () => ({
 }));
 
 // Import after mock is set up
-const { insertSession, getTotalSessions, getTotalTime, getRecentSessions } =
-  await import("../src/store/history.js");
+const {
+  insertSession,
+  getTotalSessions,
+  getTotalTime,
+  getRecentSessions,
+  getCurrentStreak,
+  getLongestStreak,
+  getSessionsToday,
+  getSessionsYesterday,
+  getSessionsThisWeek,
+} = await import("../src/store/history.js");
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
@@ -137,5 +146,185 @@ describe("getRecentSessions", () => {
       insertSession({ started_at: `2025-01-${String(i + 1).padStart(2, "0")}T00:00:00Z`, duration_seconds: 60, planned_duration: 60, meditation_type: "breathe", completed: true });
     }
     expect(getRecentSessions()).toHaveLength(10);
+  });
+});
+
+// Helper: create a session params object for a given local date
+function sessionOn(year: number, month: number, day: number, durationSeconds = 300) {
+  return {
+    started_at: new Date(year, month, day, 10, 0, 0).toISOString(),
+    duration_seconds: durationSeconds,
+    planned_duration: durationSeconds,
+    meditation_type: "breathe" as const,
+    completed: true,
+  };
+}
+
+describe("getCurrentStreak", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 5, 15, 12, 0, 0)); // June 15, 2025 noon
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns 0 when no sessions exist", () => {
+    expect(getCurrentStreak()).toBe(0);
+  });
+
+  it("returns 1 when only today has a session", () => {
+    insertSession(sessionOn(2025, 5, 15));
+    expect(getCurrentStreak()).toBe(1);
+  });
+
+  it("returns streak for consecutive days ending today", () => {
+    insertSession(sessionOn(2025, 5, 13)); // 3 days ago
+    insertSession(sessionOn(2025, 5, 14)); // 2 days ago
+    insertSession(sessionOn(2025, 5, 15)); // today
+    expect(getCurrentStreak()).toBe(3);
+  });
+
+  it("starts streak from yesterday if no session today", () => {
+    insertSession(sessionOn(2025, 5, 13));
+    insertSession(sessionOn(2025, 5, 14)); // yesterday
+    expect(getCurrentStreak()).toBe(2);
+  });
+
+  it("returns 0 when most recent session is older than yesterday", () => {
+    insertSession(sessionOn(2025, 5, 10));
+    expect(getCurrentStreak()).toBe(0);
+  });
+
+  it("stops at first gap in consecutive days", () => {
+    insertSession(sessionOn(2025, 5, 11)); // gap on June 12
+    insertSession(sessionOn(2025, 5, 13));
+    insertSession(sessionOn(2025, 5, 14));
+    insertSession(sessionOn(2025, 5, 15));
+    expect(getCurrentStreak()).toBe(3);
+  });
+
+  it("counts multiple sessions on the same day as one day", () => {
+    insertSession(sessionOn(2025, 5, 15));
+    insertSession({ ...sessionOn(2025, 5, 15), started_at: new Date(2025, 5, 15, 14, 0, 0).toISOString() });
+    insertSession(sessionOn(2025, 5, 14));
+    expect(getCurrentStreak()).toBe(2);
+  });
+});
+
+describe("getLongestStreak", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 5, 15, 12, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns 0 when no sessions exist", () => {
+    expect(getLongestStreak()).toBe(0);
+  });
+
+  it("returns 1 for a single session", () => {
+    insertSession(sessionOn(2025, 5, 10));
+    expect(getLongestStreak()).toBe(1);
+  });
+
+  it("finds longest streak even if not current", () => {
+    // Old streak of 4 days
+    insertSession(sessionOn(2025, 5, 1));
+    insertSession(sessionOn(2025, 5, 2));
+    insertSession(sessionOn(2025, 5, 3));
+    insertSession(sessionOn(2025, 5, 4));
+    // Gap, then current streak of 2
+    insertSession(sessionOn(2025, 5, 14));
+    insertSession(sessionOn(2025, 5, 15));
+    expect(getLongestStreak()).toBe(4);
+  });
+
+  it("returns current streak when it is the longest", () => {
+    insertSession(sessionOn(2025, 5, 12));
+    insertSession(sessionOn(2025, 5, 13));
+    insertSession(sessionOn(2025, 5, 14));
+    insertSession(sessionOn(2025, 5, 15));
+    expect(getLongestStreak()).toBe(4);
+  });
+});
+
+describe("getSessionsToday", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 5, 15, 12, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns zero counts when no sessions exist", () => {
+    expect(getSessionsToday()).toEqual({ count: 0, totalSeconds: 0 });
+  });
+
+  it("counts only today's sessions", () => {
+    insertSession(sessionOn(2025, 5, 14, 100)); // yesterday
+    insertSession(sessionOn(2025, 5, 15, 200)); // today
+    insertSession(sessionOn(2025, 5, 15, 300)); // today
+    const result = getSessionsToday();
+    expect(result.count).toBe(2);
+    expect(result.totalSeconds).toBe(500);
+  });
+});
+
+describe("getSessionsYesterday", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 5, 15, 12, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns zero counts when no sessions exist", () => {
+    expect(getSessionsYesterday()).toEqual({ count: 0, totalSeconds: 0 });
+  });
+
+  it("counts only yesterday's sessions", () => {
+    insertSession(sessionOn(2025, 5, 13, 100)); // two days ago
+    insertSession(sessionOn(2025, 5, 14, 200)); // yesterday
+    insertSession(sessionOn(2025, 5, 15, 300)); // today
+    const result = getSessionsYesterday();
+    expect(result.count).toBe(1);
+    expect(result.totalSeconds).toBe(200);
+  });
+});
+
+describe("getSessionsThisWeek", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // June 18, 2025 is a Wednesday (getDay() = 3)
+    vi.setSystemTime(new Date(2025, 5, 18, 12, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns zero counts when no sessions exist", () => {
+    expect(getSessionsThisWeek()).toEqual({ count: 0, totalSeconds: 0 });
+  });
+
+  it("counts sessions within the current week (Sun-Sat)", () => {
+    // Week starts Sunday June 15 for Wednesday June 18
+    insertSession(sessionOn(2025, 5, 14, 100)); // Saturday before — excluded
+    insertSession(sessionOn(2025, 5, 15, 200)); // Sunday — included
+    insertSession(sessionOn(2025, 5, 18, 300)); // Wednesday (today) — included
+    insertSession(sessionOn(2025, 5, 21, 150)); // Saturday — included
+    insertSession(sessionOn(2025, 5, 22, 400)); // next Sunday — excluded
+    const result = getSessionsThisWeek();
+    expect(result.count).toBe(3);
+    expect(result.totalSeconds).toBe(650);
   });
 });
