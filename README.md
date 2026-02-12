@@ -15,7 +15,7 @@ A minimal CLI meditation tool for developers. Take mindful breaks without leavin
 
 ## Installation
 
-Requires **Node.js 18+**.
+Requires **[Bun](https://bun.sh)**.
 
 ```bash
 # Clone the repository
@@ -23,13 +23,13 @@ git clone https://github.com/your-username/headspace-clone.git
 cd headspace-clone
 
 # Install dependencies
-npm install
+bun install
 
 # Build
-npm run build
+bun run build
 
 # Link globally so you can use `hs` anywhere
-npm link
+bun link
 ```
 
 After linking, the `hs` command is available in your terminal.
@@ -196,26 +196,27 @@ test/
 - **[Commander.js](https://github.com/tj/commander.js)** — CLI argument parsing and subcommand routing
 - **[better-sqlite3](https://github.com/WiseLibs/better-sqlite3)** — Synchronous SQLite for session history
 - **[Conf](https://github.com/sindresorhus/conf)** — Persistent user configuration
-- **[tsup](https://github.com/egoist/tsup)** — TypeScript bundler (ESM output, Node 18+ target)
+- **[Bun](https://bun.sh)** — JavaScript runtime and package manager
+- **[tsup](https://github.com/egoist/tsup)** — TypeScript bundler (ESM output)
 - **[Vitest](https://vitest.dev)** — Test runner
 
 ## Development
 
 ```bash
 # Watch mode (rebuilds on file changes)
-npm run dev
+bun run dev
 
 # Run tests
-npm test
+bun run test
 
 # Run tests in watch mode
-npm run test:watch
+bun run test:watch
 
 # Build for production
-npm run build
+bun run build
 
 # Run without global install
-node dist/index.js
+bun dist/index.js
 ```
 
 ## Accessibility
@@ -247,12 +248,12 @@ Features and improvements planned for future releases:
 - **Theme system** — Implement the `minimal` and `focus` themes with distinct color palettes and layout styles
 - **Custom durations in menu** — Allow typing a custom duration in the picker instead of only preset options
 - **Session pause/resume** — Pause a running session with a keypress and resume without losing progress
-- **Notifications** — Optional system notifications (via `node-notifier`) for session reminders at configurable intervals
+- **Notifications** — Optional system notifications for session reminders at configurable intervals
 - **Tab completion** — Shell completions for bash/zsh/fish via Commander.js
 
 ### Technical
 
-- **npm publishing** — Publish to npm as a global CLI tool (`npm install -g hs-meditate`)
+- **npm publishing** — Publish to npm as a global CLI tool (`bun add -g hs-meditate`)
 - **CI/CD pipeline** — GitHub Actions for automated testing, linting, and release publishing
 - **Plugin system** — Allow third-party meditation techniques to be added as plugins
 - **Cross-platform testing** — Ensure consistent behavior on macOS, Linux, and Windows terminals
