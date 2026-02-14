@@ -6,7 +6,10 @@ import { statsCommand } from "./commands/stats.js";
 import { configCommand } from "./commands/config.js";
 import { boxBreathingCommand } from "./commands/box-breathing.js";
 import { menuCommand } from "./commands/menu.js";
+import { exportCommand } from "./commands/export.js";
+import { completionsCommand } from "./commands/completions.js";
 import { getConfig } from "./store/config.js";
+import { getPatternById, parseCustomPattern } from "./engine/patterns.js";
 
 function checkTerminalSize(): void {
   const cols = process.stdout.columns ?? 80;
@@ -38,7 +41,8 @@ program
 program
   .command("breathe [duration]")
   .description("Start a breath awareness session (default: from config)")
-  .action((duration?: string) => {
+  .option("--pattern <pattern>", "Breathing pattern (e.g. 4-4-4, 4-7-8, 5-5)")
+  .action((duration?: string, options?: { pattern?: string }) => {
     checkTerminalSize();
     const defaultSeconds = getConfig().defaultDuration;
     const seconds = duration ? parseDuration(duration) : defaultSeconds;
@@ -46,7 +50,15 @@ program
       console.error(`Invalid duration: "${duration}". Try "5m", "90s", or "1h30m".`);
       process.exit(1);
     }
-    breatheCommand(seconds);
+    let pattern;
+    if (options?.pattern) {
+      pattern = getPatternById(options.pattern) ?? parseCustomPattern(options.pattern);
+      if (!pattern) {
+        console.error(`Invalid pattern: "${options.pattern}". Try "4-4-4", "4-7-8", or "5-5".`);
+        process.exit(1);
+      }
+    }
+    breatheCommand(seconds, pattern);
   });
 
 program
@@ -87,6 +99,25 @@ program
   .description("View or update configuration")
   .action((key?: string, value?: string) => {
     configCommand(key, value);
+  });
+
+program
+  .command("export")
+  .description("Export session data to stdout")
+  .option("--format <format>", "Output format: json or csv", "json")
+  .action((options: { format: string }) => {
+    if (options.format !== "json" && options.format !== "csv") {
+      console.error(`Invalid format: "${options.format}". Use "json" or "csv".`);
+      process.exit(1);
+    }
+    exportCommand(options.format);
+  });
+
+program
+  .command("completions <shell>")
+  .description("Generate shell completion script (bash, zsh, fish)")
+  .action((shell: string) => {
+    completionsCommand(shell);
   });
 
 program.parse();

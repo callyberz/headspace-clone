@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
+import { useTheme } from "./ThemeContext.js";
 import {
   getTotalSessions,
   getTotalTime,
@@ -27,6 +28,7 @@ interface StatsScreenProps {
 }
 
 export default function StatsScreen({ onBack }: StatsScreenProps) {
+  const theme = useTheme();
   const total = getTotalSessions();
   const totalTime = getTotalTime();
   const currentStreak = getCurrentStreak();
@@ -45,10 +47,10 @@ export default function StatsScreen({ onBack }: StatsScreenProps) {
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Text bold>Practice Summary</Text>
       <Box marginTop={1} flexDirection="column">
-        <Text>Total sessions:     <Text color="cyan">{total}</Text></Text>
-        <Text>Total time:         <Text color="cyan">{formatTime(totalTime)}</Text></Text>
-        <Text>Current streak:     <Text color="cyan">{pluralize(currentStreak, "day")}</Text></Text>
-        <Text>Longest streak:     <Text color="cyan">{pluralize(longestStreak, "day")}</Text></Text>
+        <Text>Total sessions:     <Text color={theme.primary}>{total}</Text></Text>
+        <Text>Total time:         <Text color={theme.primary}>{formatTime(totalTime)}</Text></Text>
+        <Text>Current streak:     <Text color={theme.primary}>{pluralize(currentStreak, "day")}</Text></Text>
+        <Text>Longest streak:     <Text color={theme.primary}>{pluralize(longestStreak, "day")}</Text></Text>
       </Box>
       <Box marginTop={1} flexDirection="column">
         <Text bold>Recent practice:</Text>

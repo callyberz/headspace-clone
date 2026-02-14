@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
+import { useTheme } from "./ThemeContext.js";
 
 export interface SelectItem {
   label: string;
@@ -16,6 +17,7 @@ interface SelectListProps {
 }
 
 export default function SelectList({ items, onSelect, onCancel, title, escHint }: SelectListProps) {
+  const theme = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Reset cursor when items change (e.g. switching screens)
@@ -46,7 +48,7 @@ export default function SelectList({ items, onSelect, onCancel, title, escHint }
         const isActive = index === activeIndex;
         return (
           <Box key={item.value}>
-            <Text color={isActive ? "cyan" : undefined}>
+            <Text color={isActive ? theme.primary : undefined}>
               {isActive ? "> " : "  "}
               {item.label}
             </Text>
@@ -60,7 +62,7 @@ export default function SelectList({ items, onSelect, onCancel, title, escHint }
       )}
       {escHint && (
         <Box marginTop={1}>
-          <Text color="yellow">Press Esc again to quit</Text>
+          <Text color={theme.warning}>Press Esc again to quit</Text>
         </Box>
       )}
       <Box marginTop={1}>

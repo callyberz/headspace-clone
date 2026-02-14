@@ -36,6 +36,13 @@ export function insertSession(params: InsertSessionParams): number {
   return Number(result.lastInsertRowid);
 }
 
+export function getAllSessions(): Session[] {
+  const db = getDb();
+  return db
+    .prepare("SELECT * FROM sessions ORDER BY started_at DESC")
+    .all() as Session[];
+}
+
 export function getRecentSessions(limit = 10): Session[] {
   const db = getDb();
   return db

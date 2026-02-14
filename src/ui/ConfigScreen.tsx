@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Text } from "ink";
 import SelectList, { type SelectItem } from "./SelectList.js";
+import { useTheme } from "./ThemeContext.js";
 import { getConfig, setConfig } from "../store/config.js";
 
 interface ConfigScreenProps {
@@ -32,6 +33,7 @@ function formatDurationLabel(seconds: number): string {
 }
 
 export default function ConfigScreen({ onBack }: ConfigScreenProps) {
+  const theme = useTheme();
   const [view, setView] = useState<ConfigView>("list");
   const [savedMsg, setSavedMsg] = useState<string>("");
 
@@ -104,7 +106,7 @@ export default function ConfigScreen({ onBack }: ConfigScreenProps) {
     <Box flexDirection="column">
       {savedMsg && (
         <Box paddingX={2} paddingTop={1}>
-          <Text color="green">{savedMsg}</Text>
+          <Text color={theme.success}>{savedMsg}</Text>
         </Box>
       )}
       <SelectList
