@@ -4,23 +4,28 @@ import BreathingIndicator from "./BreathingIndicator.js";
 import Timer from "./Timer.js";
 import SessionComplete from "./SessionComplete.js";
 import { formatDuration } from "../utils/format.js";
+import { useTheme } from "./ThemeContext.js";
+import { type BreathingPattern } from "../engine/patterns.js";
 
 type Stage = "intro" | "active" | "complete";
 
 interface AppProps {
   duration: number;
   type: string;
+  pattern?: BreathingPattern;
   onComplete?: (elapsedSeconds: number) => void;
   onBack?: () => void;
 }
 
-export default function App({ duration, type, onComplete, onBack }: AppProps) {
+export default function App({ duration, type, pattern, onComplete, onBack }: AppProps) {
   const { exit } = useApp();
+  const theme = useTheme();
   const [stage, setStage] = useState<Stage>("intro");
   const [remaining, setRemaining] = useState(duration);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (stage !== "active") return;
+    if (stage !== "active" || paused) return;
 
     const interval = setInterval(() => {
       setRemaining((prev) => {
@@ -34,15 +39,18 @@ export default function App({ duration, type, onComplete, onBack }: AppProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [stage]);
+  }, [stage, paused]);
 
   const handleInput = useCallback(
-    (_input: string, key: { return: boolean; escape: boolean }) => {
+    (input: string, key: { return: boolean; escape: boolean }) => {
       if (stage === "intro" && key.return) {
         setStage("active");
       }
       if (stage === "active" && key.escape) {
         onBack ? onBack() : exit();
+      }
+      if (stage === "active" && (input === " " || input === "p")) {
+        setPaused((prev) => !prev);
       }
     },
     [stage, exit, onBack],
@@ -81,12 +89,16 @@ export default function App({ duration, type, onComplete, onBack }: AppProps) {
       <Text>
         {type}
       </Text>
-      <Text dimColor>Follow the rhythm. Let thoughts pass.</Text>
+      {paused ? (
+        <Text bold color={theme.warning}>PAUSED</Text>
+      ) : (
+        <Text dimColor>Follow the rhythm. Let thoughts pass.</Text>
+      )}
       <Box flexDirection="column" gap={1}>
-        <BreathingIndicator />
+        <BreathingIndicator pattern={pattern} paused={paused} />
         <Timer remainingSeconds={remaining} />
       </Box>
-      <Text dimColor>[Esc back]</Text>
+      <Text dimColor>[Space pause · Esc back]</Text>
     </Box>
   );
 }

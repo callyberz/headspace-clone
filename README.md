@@ -6,11 +6,17 @@ A minimal CLI meditation tool for developers. Take mindful breaks without leavin
 
 ## Features
 
-- **Breath Awareness** — Guided breathing with a visual pacer bar. Inhale, hold, exhale on a 4s/4s/4s cycle with a progress bar that fills and empties in rhythm.
+- **Breath Awareness** — Guided breathing with a visual pacer bar. Inhale, hold, exhale with customizable breathing patterns.
 - **Mindful Break** — A shorter, gentler pause using the same breathing pacer. Defaults to 2 minutes.
 - **Box Breathing** — The classic 4-4-4-4 technique (inhale, hold, exhale, hold) with an animated box visualization. A dot traces the perimeter of a box in your terminal, one side per phase.
+- **Custom Breathing Patterns** — Choose from built-in presets (4-4-4, 4-7-8 relaxing, 5-5 coherent, 4-4-4-4 box) or define your own via `--pattern`.
+- **Session Pause/Resume** — Press Space or `p` to pause a running session and resume without losing progress.
 - **Session Tracking** — Every session is recorded in a local SQLite database. View your practice summary, streaks, and weekly stats.
-- **Interactive Menu** — Run `hs` with no arguments to get a full interactive menu with arrow-key navigation. Browse meditation types, pick durations, view stats, and change settings without memorizing commands.
+- **Session History Browser** — Browse past sessions in a paginated, scrollable list from the interactive menu.
+- **Export Data** — Export your full session history to CSV or JSON for use in other tools.
+- **Theme System** — Three visual themes (default, minimal, focus) with distinct color palettes and breathing bar styles.
+- **Interactive Menu** — Run `hs` with no arguments to get a full interactive menu with arrow-key navigation. Browse meditation types, pick patterns and durations, view stats, and change settings without memorizing commands.
+- **Shell Completions** — Generate tab-completion scripts for bash, zsh, and fish.
 - **Configurable** — Set your default session duration and visual theme. Settings persist across sessions via [Conf](https://github.com/sindresorhus/conf).
 
 ## Installation
@@ -46,7 +52,7 @@ hs
 
 This presents a navigable list of all available features. Use the arrow keys to move, Enter to select, and Esc to go back. Double-tap Esc to quit from any menu screen.
 
-All sessions launched from the menu stay within the same UI — pressing Esc during or after a session returns you to the main menu instead of exiting the app.
+When selecting Breath Awareness, you'll first pick a breathing pattern, then a duration. All sessions launched from the menu stay within the same UI — pressing Esc during or after a session returns you to the main menu instead of exiting the app.
 
 ### Direct commands
 
@@ -58,6 +64,10 @@ hs breathe
 hs breathe 5m
 hs breathe 90s
 hs breathe 1h30m
+
+# Breath awareness with a specific pattern
+hs breathe --pattern 4-7-8 5m
+hs breathe --pattern 5-5 3m
 
 # Mindful break (default: 2 minutes)
 hs break
@@ -75,7 +85,30 @@ hs config
 hs config defaultDuration
 hs config defaultDuration 600
 hs config theme minimal
+
+# Export session history
+hs export                  # JSON to stdout (default)
+hs export --format csv     # CSV to stdout
+hs export --format json    # JSON to stdout
+
+# Generate shell completions
+hs completions bash
+hs completions zsh
+hs completions fish
 ```
+
+### Breathing patterns
+
+Built-in patterns available via `--pattern` or the interactive menu:
+
+| Pattern | Name | Phases |
+|---------|------|--------|
+| `4-4-4` | Standard | Inhale 4s, Hold 4s, Exhale 4s |
+| `4-7-8` | Relaxing | Inhale 4s, Hold 7s, Exhale 8s |
+| `5-5` | Coherent | Inhale 5s, Exhale 5s |
+| `4-4-4-4` | Box | Inhale 4s, Hold 4s, Exhale 4s, Hold 4s |
+
+You can also specify custom patterns as dash-separated seconds (e.g., `--pattern 3-6-9`).
 
 ### Duration format
 
@@ -95,9 +128,40 @@ Durations accept flexible formats:
 | Key | Action |
 |-----|--------|
 | `Up` / `Down` | Navigate menu items |
+| `Left` / `Right` | Navigate history pages |
 | `Enter` | Select / start session |
+| `Space` / `p` | Pause / resume a running session |
 | `Esc` | Go back one screen |
 | `Esc` `Esc` | Quit the app (from menu screens, within 400ms) |
+
+### Themes
+
+Three visual themes are available, configurable via `hs config theme <name>` or the Settings menu:
+
+| Property | default | minimal | focus |
+|----------|---------|---------|-------|
+| Primary color | cyan | white | magenta |
+| Secondary color | blue | gray | blue |
+| Success color | green | white | green |
+| Warning color | yellow | white | yellow |
+| Bar fill | `━` | `=` | `█` |
+| Bar empty | `─` | `-` | `░` |
+| Dot | `●` | `o` | `◉` |
+
+### Shell completions
+
+To enable tab completion, add the output of the completions command to your shell config:
+
+```bash
+# Bash (~/.bashrc)
+eval "$(hs completions bash)"
+
+# Zsh (~/.zshrc)
+eval "$(hs completions zsh)"
+
+# Fish (~/.config/fish/config.fish)
+hs completions fish | source
+```
 
 ## How it works
 
@@ -110,7 +174,7 @@ Breathe in
 ━━━━━━━━━━━━────────
 ```
 
-**Box Breathing** renders an ASCII box with a dot (`●`) that traces the perimeter — up the left side (inhale), across the top (hold), down the right side (exhale), across the bottom (hold):
+**Box Breathing** renders an ASCII box with a dot that traces the perimeter — up the left side (inhale), across the top (hold), down the right side (exhale), across the bottom (hold):
 
 ```
 Breathe in
@@ -168,7 +232,13 @@ src/
     box-breathing.tsx    # Direct CLI + component: box breathing session
     stats.ts             # Direct CLI: print stats to stdout
     config.ts            # Direct CLI: view/set config from command line
+    export.ts            # Direct CLI: export session data to CSV/JSON
+    completions.ts       # Direct CLI: generate shell completion scripts
+  engine/
+    patterns.ts          # Breathing pattern definitions and parser
   ui/
+    theme.ts             # Theme color and character definitions
+    ThemeContext.tsx      # React context provider and useTheme() hook
     Menu.tsx             # Main interactive menu (hosts all screens)
     SelectList.tsx       # Reusable arrow-key select list component
     App.tsx              # Breath awareness / mindful break session screen
@@ -178,6 +248,7 @@ src/
     SessionComplete.tsx  # Post-session completion screen
     StatsScreen.tsx      # Stats display (Ink-based, for menu context)
     ConfigScreen.tsx     # Interactive settings editor (for menu context)
+    HistoryScreen.tsx    # Paginated session history browser
   store/
     db.ts                # SQLite database setup and connection
     history.ts           # Session CRUD and stats queries
@@ -187,6 +258,8 @@ src/
 test/
   format.test.ts         # Duration parser tests
   history.test.ts        # Session history and streak tests
+  patterns.test.ts       # Breathing pattern parsing tests
+  export.test.ts         # Export formatting tests
 ```
 
 ## Tech stack
@@ -232,24 +305,18 @@ Features and improvements planned for future releases:
 ### Meditation content
 
 - **Guided meditation sessions** — Audio-free guided prompts that display timed instructions (body scan, loving-kindness, focus meditation) as text in the terminal
-- **Custom breathing patterns** — Let users define their own inhale/hold/exhale timings beyond the built-in 4-4-4 cycles (e.g., 4-7-8 relaxing breath, 5-5 coherent breathing)
 - **Ambient soundscapes** — Optional terminal bell or system sound cues at phase transitions (inhale/exhale) for eyes-free sessions
 - **Daily intention prompts** — Short journaling prompt before or after sessions, saved alongside session history
 
 ### Tracking and insights
 
 - **Weekly/monthly reports** — Richer stats breakdowns with charts rendered in the terminal (sparklines, bar charts for weekly trends)
-- **Session history browser** — Scrollable list of past sessions in the interactive menu with date, type, and duration
-- **Export data** — Export session history to CSV or JSON for use in other tools
 - **Goals and reminders** — Set daily meditation goals (e.g., "10 minutes per day") and see progress toward them in the stats screen
 
 ### User experience
 
-- **Theme system** — Implement the `minimal` and `focus` themes with distinct color palettes and layout styles
 - **Custom durations in menu** — Allow typing a custom duration in the picker instead of only preset options
-- **Session pause/resume** — Pause a running session with a keypress and resume without losing progress
 - **Notifications** — Optional system notifications for session reminders at configurable intervals
-- **Tab completion** — Shell completions for bash/zsh/fish via Commander.js
 
 ### Technical
 

@@ -1,61 +1,63 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
+import { useTheme } from "./ThemeContext.js";
+import { type BreathingPattern, BUILTIN_PATTERNS } from "../engine/patterns.js";
 
-const PHASE_DURATION_MS = 4000;
+const DEFAULT_BOX_PATTERN = BUILTIN_PATTERNS[3]; // 4-4-4-4
+
 const TICK_MS = 100;
 
-type Phase = "inhale" | "hold-top" | "exhale" | "hold-bottom";
-
-const PHASES: Phase[] = ["inhale", "hold-top", "exhale", "hold-bottom"];
-const CYCLE_MS = PHASES.length * PHASE_DURATION_MS;
-
-const phaseLabels: Record<Phase, string> = {
-  inhale: "Breathe in",
-  "hold-top": "Hold",
-  exhale: "Breathe out",
-  "hold-bottom": "Hold",
-};
-
-function getPhaseAndProgress(elapsed: number): { phase: Phase; progress: number } {
-  const position = elapsed % CYCLE_MS;
-  const phaseIndex = Math.min(Math.floor(position / PHASE_DURATION_MS), PHASES.length - 1);
-  const phaseElapsed = position - phaseIndex * PHASE_DURATION_MS;
-  return { phase: PHASES[phaseIndex], progress: phaseElapsed / PHASE_DURATION_MS };
+function getPhaseAndProgress(
+  elapsed: number,
+  pattern: BreathingPattern,
+): { phaseName: string; label: string; progress: number; phaseIndex: number } {
+  const position = elapsed % pattern.cycleMs;
+  let acc = 0;
+  for (let i = 0; i < pattern.phases.length; i++) {
+    const phase = pattern.phases[i];
+    if (position < acc + phase.durationMs) {
+      return {
+        phaseName: phase.name,
+        label: phase.label,
+        progress: (position - acc) / phase.durationMs,
+        phaseIndex: i,
+      };
+    }
+    acc += phase.durationMs;
+  }
+  const last = pattern.phases[pattern.phases.length - 1];
+  return {
+    phaseName: last.name,
+    label: last.label,
+    progress: 1,
+    phaseIndex: pattern.phases.length - 1,
+  };
 }
 
 // Box dimensions
 const BOX_W = 20;
 const BOX_H = 6;
 
-function buildBox(phase: Phase, progress: number): string[] {
-  const dot = "●";
+function buildBox(phaseIndex: number, progress: number, dot: string): string[] {
   const lines: string[] = [];
-
-  // Build the box frame
-  // Top:    ╭──────────────────╮
-  // Sides:  │                  │  (BOX_H - 2 inner rows)
-  // Bottom: ╰──────────────────╯
-
   const innerW = BOX_W - 2;
   const innerH = BOX_H - 2;
 
-  // Calculate dot position on perimeter
-  // Perimeter order: inhale = left side bottom-to-top, hold-top = top left-to-right,
-  //                  exhale = right side top-to-bottom, hold-bottom = bottom right-to-left
+  // Map phase index to perimeter position (works for 4-phase patterns)
   let dotRow = -1;
   let dotCol = -1;
 
-  if (phase === "inhale") {
-    // Left edge, moving bottom to top (row = innerH-1 down to 0, col = 0)
+  if (phaseIndex === 0) {
+    // Left edge, moving bottom to top
     const row = Math.round((1 - progress) * (innerH - 1));
-    dotRow = row + 1; // +1 for top border
+    dotRow = row + 1;
     dotCol = 0;
-  } else if (phase === "hold-top") {
+  } else if (phaseIndex === 1) {
     // Top edge, moving left to right
     const col = Math.round(progress * (innerW - 1));
     dotRow = 0;
-    dotCol = col + 1; // +1 for left border
-  } else if (phase === "exhale") {
+    dotCol = col + 1;
+  } else if (phaseIndex === 2) {
     // Right edge, moving top to bottom
     const row = Math.round(progress * (innerH - 1));
     dotRow = row + 1;
@@ -67,7 +69,6 @@ function buildBox(phase: Phase, progress: number): string[] {
     dotCol = col + 1;
   }
 
-  // Build each row
   for (let r = 0; r < BOX_H; r++) {
     let row = "";
     for (let c = 0; c < BOX_W; c++) {
@@ -98,38 +99,42 @@ function buildBox(phase: Phase, progress: number): string[] {
 interface BoxBreathingVizProps {
   round: number;
   totalRounds: number;
+  pattern?: BreathingPattern;
+  paused?: boolean;
 }
 
-export default function BoxBreathingViz({ round, totalRounds }: BoxBreathingVizProps) {
+export default function BoxBreathingViz({ round, totalRounds, pattern, paused }: BoxBreathingVizProps) {
+  const theme = useTheme();
+  const activePattern = pattern ?? DEFAULT_BOX_PATTERN;
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
+    if (paused) return;
     const interval = setInterval(() => {
       setElapsed((prev) => prev + TICK_MS);
     }, TICK_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [paused]);
 
-  const { phase, progress } = getPhaseAndProgress(elapsed);
-  const label = phaseLabels[phase];
-  const boxLines = buildBox(phase, progress);
+  const { label, progress, phaseIndex } = getPhaseAndProgress(elapsed, activePattern);
+  const boxLines = buildBox(phaseIndex, progress, theme.dot);
 
-  // Add phase labels on sides
-  const labelLeft = phase === "inhale" ? "↑ " : "  ";
-  const labelRight = phase === "exhale" ? " ↓" : "  ";
-  const labelTop = phase === "hold-top" ? "→" : " ";
-  const labelBottom = phase === "hold-bottom" ? "←" : " ";
+  // Direction arrows based on phase index
+  const labelLeft = phaseIndex === 0 ? "↑ " : "  ";
+  const labelRight = phaseIndex === 2 ? " ↓" : "  ";
+  const labelTop = phaseIndex === 1 ? "→" : " ";
+  const labelBottom = phaseIndex === 3 ? "←" : " ";
 
   const midRow = Math.floor(BOX_H / 2);
 
   return (
     <Box flexDirection="column">
-      <Text bold color="cyan">{label}</Text>
+      <Text bold color={theme.primary}>{label}</Text>
       <Text> {" ".repeat(Math.floor(BOX_W / 2))}{labelTop}</Text>
       {boxLines.map((line, i) => (
         <Text key={i}>
           {i === midRow ? labelLeft : "  "}
-          <Text color="cyan">{line}</Text>
+          <Text color={theme.primary}>{line}</Text>
           {i === midRow ? labelRight : "  "}
         </Text>
       ))}
@@ -139,4 +144,6 @@ export default function BoxBreathingViz({ round, totalRounds }: BoxBreathingVizP
   );
 }
 
-export { CYCLE_MS };
+export function getCycleMs(pattern?: BreathingPattern): number {
+  return (pattern ?? DEFAULT_BOX_PATTERN).cycleMs;
+}
